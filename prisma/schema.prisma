@@ -1,0 +1,69 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Rol {
+  CLIENTE
+  EJECUTIVO
+  ADMIN
+}
+
+enum Estado {
+  PENDIENTE
+  ATENDIDO
+  CANCELADO
+}
+
+model usuario {
+  id         Int               @id @default(autoincrement())
+  nombre     String
+  correo     String            @unique
+  contrasena String
+  rol        Rol
+  registro   registro_numero[]
+  Fila       fila[]
+}
+
+model sucursal {
+  id        Int               @id @default(autoincrement())
+  nombre    String
+  direccion String            @unique
+  horario   DateTime
+  estado    Boolean
+  fila      fila[]
+  registro  registro_numero[]
+}
+
+model fila {
+  id                   Int      @id @default(autoincrement())
+  numero_anterior      Int
+  numero_actual        Int
+  numero_siguiente     Int
+  ultima_actualizacion DateTime
+  usuario              usuario  @relation(fields: [usuario_id], references: [id])
+  usuario_id           Int
+  sucursal             sucursal @relation(fields: [sucursal_id], references: [id])
+  sucursal_id          Int
+}
+
+model registro_numero {
+  id          Int      @id @default(autoincrement())
+  sucursal    sucursal @relation(fields: [sucursal_id], references: [id])
+  sucursal_id Int
+  usuario     usuario  @relation(fields: [usuario_id], references: [id])
+  usuario_id  Int
+  numero      Int
+  estado      Estado
+  creado_en   DateTime
+}
