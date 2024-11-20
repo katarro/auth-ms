@@ -4,9 +4,8 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from 'src/common/dto/register-auth.dto';
 import { LoginDto } from 'src/common/dto/login-auth.dto';
 import { CreateSucursalDto } from 'src/common/dto/create-sucursal.dto';
-import { JwtPayload } from './interfaces/jwt-payload.interfaces';
-import { ChangePasswordDto } from 'src/common/dto/change-password.dt';
-import { ForgotEmailDto } from 'src/common/dto/forgot-email.dto';
+import { ChangePasswordDto } from 'src/common/dto/change-password.dto';
+import { ForgotPassword } from 'src/common/dto/forgot-password.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -44,7 +43,8 @@ export class AuthController {
   }
 
   @MessagePattern('forgot.password')
-  async forgotPassword(@Payload() email: ForgotEmailDto) {
-    return this.authService.forgotPassword(email);
+  async forgotPassword(@Payload() payload: ForgotPassword) {
+    const { correo } = payload;
+    return this.authService.forgotPassword(correo);
   }
 }

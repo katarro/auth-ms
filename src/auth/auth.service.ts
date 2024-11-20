@@ -8,13 +8,14 @@ import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { JwtPayload } from './interfaces/jwt-payload.interfaces';
 import { envs } from 'src/config/envs';
-import { ChangePasswordDto } from 'src/common/dto/change-password.dt';
-import { ForgotEmailDto } from 'src/common/dto/forgot-email.dto';
+import { ChangePasswordDto } from 'src/common/dto/change-password.dto';
+import * as sgMail from '@sendgrid/mail';
 
 @Injectable()
 export class AuthService extends PrismaClient {
   constructor(private readonly jwtService: JwtService) {
     super();
+    sgMail.setApiKey(envs.sendgrid_api);
   }
 
   readonly logger = new Logger('Auth-Services');
@@ -219,7 +220,9 @@ export class AuthService extends PrismaClient {
       const updatedUser = await this.usuario.update({
         where: { id },
         data: {
-          contrasena: await this.hashearContrasena(changePasswordDto.newPassword),
+          contrasena: await this.hashearContrasena(
+            changePasswordDto.newPassword,
+          ),
         },
       });
 
@@ -238,9 +241,47 @@ export class AuthService extends PrismaClient {
     }
   }
 
-  async forgotPassword(email: ForgotEmailDto){
-    
+  async forgotPassword(correo: string) {
+    try {
+      const user = await this.usuario.findUnique({ where: { correo } });
+
+      if (!user) {
+        throw new RpcException({
+          status: HttpStatus.NOT_FOUND,
+          message: 'Usuario no existe',
+        });
+      }
+
+      const token = this.jwtService.sign(
+        { correo: user.correo },
+        { secret: envs.jwt_constants, expiresIn: '15m' },
+      );
+
+      const resetUrl = `${envs.host}:${envs.port_gateway}/auth/usuarios/olvidar-contrasena/${token}`;
+
+      const msg = {
+        to: user.correo,
+        from: envs.sendrig_email,
+        subject: 'Restablece tu contraseña',
+        html: `
+          <p>Hola ${user.nombre},</p>
+          <p>Parece que olvidaste tu contraseña. Haz clic en el enlace para restablecerla:</p>
+          <a href="${resetUrl}">${resetUrl}</a>
+          <p>Este enlace expirará en 15 minutos.</p>
+        `,
+      };
+      await sgMail.send(msg);
+
+      return {
+        message: 'Correo enviado para restablecer la contraseña',
+        status: HttpStatus.OK,
+      };
+    } catch (error) {
+      throw new RpcException({
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: error.message,
+      });
+    }
   }
-
-
 }
+
