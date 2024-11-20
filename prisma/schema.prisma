@@ -26,7 +26,7 @@ enum Estado {
 }
 
 model usuario {
-  id         Int               @id @default(autoincrement())
+  id         Int               @id @default(autoincrement()) @unique
   nombre     String
   correo     String            @unique
   contrasena String
@@ -36,7 +36,7 @@ model usuario {
 }
 
 model sucursal {
-  id        Int               @id @default(autoincrement())
+  id        Int               @id @default(autoincrement()) @unique
   nombre    String
   direccion String            @unique
   horario   DateTime
@@ -46,7 +46,7 @@ model sucursal {
 }
 
 model fila {
-  id                   Int      @id @default(autoincrement())
+  id                   Int      @id @default(autoincrement()) @unique
   numero_anterior      Int
   numero_actual        Int
   numero_siguiente     Int
@@ -58,7 +58,7 @@ model fila {
 }
 
 model registro_numero {
-  id          Int      @id @default(autoincrement())
+  id          Int      @id @default(autoincrement()) @unique
   sucursal    sucursal @relation(fields: [sucursal_id], references: [id])
   sucursal_id Int
   usuario     usuario  @relation(fields: [usuario_id], references: [id])

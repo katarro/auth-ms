@@ -18,4 +18,5 @@ export class CreateSucursalDto {
   @IsBoolean()
   @IsNotEmpty()
   estado: boolean;
+
 }

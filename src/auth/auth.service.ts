@@ -1,13 +1,15 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { RegisterDto } from 'src/common/dto/register-auth.dto';
 import { LoginDto } from 'src/common/dto/login-auth.dto';
 import { CreateSucursalDto } from 'src/common/dto/create-sucursal.dto';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Rol } from '@prisma/client';
 import { RpcException } from '@nestjs/microservices';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { JwtPayload } from './interfaces/jwt-payload.interfaces';
 import { envs } from 'src/config/envs';
+import { ChangePasswordDto } from 'src/common/dto/change-password.dt';
+import { ForgotEmailDto } from 'src/common/dto/forgot-email.dto';
 
 @Injectable()
 export class AuthService extends PrismaClient {
@@ -22,18 +24,10 @@ export class AuthService extends PrismaClient {
     this.logger.log('Conectado a PostgreSQL');
   }
 
-  async signJwt(payload: JwtPayload) {
-    return this.jwtService.signAsync(payload);
-  }
-
-  async hashearContrasena(contrasena: string) {
-    const salt = await bcrypt.genSalt(10);
-    return await bcrypt.hash(contrasena, salt);
-  }
-
+  //Cambiar a registerUserDto
   async registerUser(registerDto: RegisterDto) {
     try {
-      const { nombre, correo, contrasena } = registerDto;
+      const { nombre, correo, contrasena, rol } = registerDto;
       const user = await this.usuario.findUnique({ where: { correo } });
 
       if (user) {
@@ -48,7 +42,7 @@ export class AuthService extends PrismaClient {
           nombre: nombre,
           correo: correo,
           contrasena: await this.hashearContrasena(contrasena),
-          rol: 'CLIENTE',
+          rol: rol || 'CLIENTE',
         },
       });
 
@@ -124,7 +118,129 @@ export class AuthService extends PrismaClient {
     }
   }
 
-  registerSucursal(createSucursalDto: CreateSucursalDto) {
-    return 'Registrar una sucursal';
+  async registerSucursal(createSucursalDto: CreateSucursalDto, token: string) {
+    try {
+      // await this.verifyAdminToken(token);
+
+      const { nombre, direccion, horario, estado } = createSucursalDto;
+
+      const sucursal = await this.sucursal.findUnique({ where: { direccion } });
+
+      if (sucursal) {
+        return {
+          status: HttpStatus.CONFLICT,
+          message: 'Sucursal ya existe',
+        };
+      }
+
+      const newSucursal = await this.sucursal.create({
+        data: {
+          nombre,
+          direccion,
+          horario,
+          estado,
+        },
+      });
+
+      return {
+        sucursal: newSucursal,
+        status: HttpStatus.CREATED,
+        message: 'Sucursal registrada',
+      };
+    } catch (error) {
+      console.log('error malo');
+      throw new RpcException({
+        status: error.status || HttpStatus.NOT_FOUND,
+        message: error.message,
+      });
+    }
   }
+
+  async verifyAdminToken(token: string) {
+    try {
+      const { rol } = await this.jwtService.verify(token, {
+        secret: envs.jwt_constants,
+      });
+
+      if (rol !== Rol.ADMIN) {
+        throw new RpcException({
+          status: 403,
+          message: `Acceso denegado, se requiere rol de ${Rol.ADMIN}`,
+        });
+      }
+      return true;
+    } catch (error) {
+      throw new RpcException({
+        status: 401, //HttpStatus.UNAUTHORIZED,
+        message: 'Token inválido',
+      });
+    }
+  }
+
+  async signJwt(payload: JwtPayload) {
+    return this.jwtService.signAsync(payload);
+  }
+
+  async hashearContrasena(contrasena: string) {
+    const salt = await bcrypt.genSalt(10);
+    return await bcrypt.hash(contrasena, salt);
+  }
+
+  async changePassword(id: number, changePasswordDto: ChangePasswordDto) {
+    try {
+      const user = await this.usuario.findUnique({ where: { id } });
+
+      if (!user) {
+        throw new RpcException({
+          status: HttpStatus.NOT_FOUND,
+          message: 'Usuario no encontrado',
+        });
+      }
+
+      const isPasswordValid = await bcrypt.compare(
+        changePasswordDto.currentPassword,
+        user.contrasena,
+      );
+
+      if (!isPasswordValid) {
+        throw new RpcException({
+          status: HttpStatus.UNAUTHORIZED,
+          message: 'Contraseña actual no coincide',
+        });
+      }
+
+      if (changePasswordDto.currentPassword === changePasswordDto.newPassword) {
+        throw new RpcException({
+          status: HttpStatus.BAD_REQUEST,
+          message: 'Contraseñas no pueden ser iguales',
+        });
+      }
+
+      const updatedUser = await this.usuario.update({
+        where: { id },
+        data: {
+          contrasena: await this.hashearContrasena(changePasswordDto.newPassword),
+        },
+      });
+
+      const { contrasena: _, ...rest } = updatedUser;
+
+      return {
+        user: rest,
+        message: 'Contraseña actualizada exitosamente',
+        status: HttpStatus.ACCEPTED,
+      };
+    } catch (error) {
+      throw new RpcException({
+        status: error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        message: error.message,
+      });
+    }
+  }
+
+  async forgotPassword(email: ForgotEmailDto){
+    
+  }
+
+
 }
