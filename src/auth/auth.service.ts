@@ -1,8 +1,8 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
-import { RegisterDto } from 'src/common/dto/register-auth.dto';
-import { LoginDto } from 'src/common/dto/login-auth.dto';
-import { CreateSucursalDto } from 'src/common/dto/create-sucursal.dto';
-import { PrismaClient, Rol } from '@prisma/client';
+import { RegisterUserDto } from 'src/common/dto/register.user.dto';
+import { LoginDto } from 'src/common/dto/login.dto';
+import { CreateBranchDto } from 'src/common/dto/create-branch.dto';
+import { PrismaClient, Role } from '@prisma/client';
 import { RpcException } from '@nestjs/microservices';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
@@ -26,10 +26,10 @@ export class AuthService extends PrismaClient {
   }
 
   //Cambiar a registerUserDto
-  async registerUser(registerDto: RegisterDto) {
+  async registerUser(registerDto: RegisterUserDto) {
     try {
-      const { nombre, correo, contrasena, rol } = registerDto;
-      const user = await this.usuario.findUnique({ where: { correo } });
+      const { name, email, password, role } = registerDto;
+      const user = await this.user.findUnique({ where: { email } });
 
       if (user) {
         throw new RpcException({
@@ -38,16 +38,16 @@ export class AuthService extends PrismaClient {
         });
       }
 
-      const newUser = await this.usuario.create({
+      const newUser = await this.user.create({
         data: {
-          nombre: nombre,
-          correo: correo,
-          contrasena: await this.hashearContrasena(contrasena),
-          rol: rol || 'CLIENTE',
+          name: name,
+          email: email,
+          password: await this.hashearPassword(password),
+          role: role || Role.Client,
         },
       });
 
-      const { contrasena: __, ...rest } = newUser;
+      const { password: __, ...rest } = newUser;
 
       return {
         user: rest,
@@ -64,11 +64,11 @@ export class AuthService extends PrismaClient {
   }
 
   async loginUser(loginDto: LoginDto) {
-    const { correo, contrasena } = loginDto;
+    const { email, password } = loginDto;
 
-    const user = await this.usuario.findUnique({
+    const user = await this.user.findUnique({
       where: {
-        correo,
+        email,
       },
     });
 
@@ -79,7 +79,7 @@ export class AuthService extends PrismaClient {
       });
     }
 
-    const isPasswordValid = await bcrypt.compare(contrasena, user.contrasena);
+    const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
       throw new RpcException({
@@ -88,7 +88,7 @@ export class AuthService extends PrismaClient {
       });
     }
 
-    const { contrasena: __, ...rest } = user;
+    const { password: __, ...rest } = user;
 
     return {
       rest,
@@ -100,9 +100,6 @@ export class AuthService extends PrismaClient {
 
   async verifyToken(token: string) {
     try {
-      // el token se crea con la llave jwt_secret y deben hacer match
-      // 1. verificamos el match
-      // retornamos el usuario sin el token ni si unformacion (sub,iat, exp)
       const { iat, exp, ...user } = await this.jwtService.verify(token, {
         secret: envs.jwt_constants,
       });
@@ -119,13 +116,13 @@ export class AuthService extends PrismaClient {
     }
   }
 
-  async registerSucursal(createSucursalDto: CreateSucursalDto, token: string) {
+  async registerSucursal(createBranchDto: CreateBranchDto, token: string) {
     try {
-      // await this.verifyAdminToken(token);
+      await this.verifyAdminToken(token);
 
-      const { nombre, direccion, horario, estado } = createSucursalDto;
+      const { name, address, schedule, status } = createBranchDto;
 
-      const sucursal = await this.sucursal.findUnique({ where: { direccion } });
+      const sucursal = await this.branch.findUnique({ where: { address } });
 
       if (sucursal) {
         return {
@@ -134,12 +131,12 @@ export class AuthService extends PrismaClient {
         };
       }
 
-      const newSucursal = await this.sucursal.create({
+      const newSucursal = await this.branch.create({
         data: {
-          nombre,
-          direccion,
-          horario,
-          estado,
+          name,
+          address,
+          schedule,
+          status,
         },
       });
 
@@ -159,14 +156,14 @@ export class AuthService extends PrismaClient {
 
   async verifyAdminToken(token: string) {
     try {
-      const { rol } = await this.jwtService.verify(token, {
+      const { role } = await this.jwtService.verify(token, {
         secret: envs.jwt_constants,
       });
 
-      if (rol !== Rol.ADMIN) {
+      if (role !== Role.Admin) {
         throw new RpcException({
           status: 403,
-          message: `Acceso denegado, se requiere rol de ${Rol.ADMIN}`,
+          message: `Acceso denegado, se requiere rol de ${Role.Admin}`,
         });
       }
       return true;
@@ -182,14 +179,14 @@ export class AuthService extends PrismaClient {
     return this.jwtService.signAsync(payload);
   }
 
-  async hashearContrasena(contrasena: string) {
+  async hashearPassword(contrasena: string) {
     const salt = await bcrypt.genSalt(10);
     return await bcrypt.hash(contrasena, salt);
   }
 
   async changePassword(id: number, changePasswordDto: ChangePasswordDto) {
     try {
-      const user = await this.usuario.findUnique({ where: { id } });
+      const user = await this.user.findUnique({ where: { id } });
 
       if (!user) {
         throw new RpcException({
@@ -200,7 +197,7 @@ export class AuthService extends PrismaClient {
 
       const isPasswordValid = await bcrypt.compare(
         changePasswordDto.currentPassword,
-        user.contrasena,
+        user.password,
       );
 
       if (!isPasswordValid) {
@@ -217,16 +214,16 @@ export class AuthService extends PrismaClient {
         });
       }
 
-      const updatedUser = await this.usuario.update({
+      const updatedUser = await this.user.update({
         where: { id },
         data: {
-          contrasena: await this.hashearContrasena(
+          password: await this.hashearPassword(
             changePasswordDto.newPassword,
           ),
         },
       });
 
-      const { contrasena: _, ...rest } = updatedUser;
+      const { password: _, ...rest } = updatedUser;
 
       return {
         user: rest,
@@ -241,9 +238,9 @@ export class AuthService extends PrismaClient {
     }
   }
 
-  async forgotPassword(correo: string) {
+  async resetPassword(email: string) {
     try {
-      const user = await this.usuario.findUnique({ where: { correo } });
+      const user = await this.user.findUnique({ where: { email } });
 
       if (!user) {
         throw new RpcException({
@@ -253,18 +250,18 @@ export class AuthService extends PrismaClient {
       }
 
       const token = this.jwtService.sign(
-        { correo: user.correo },
+        { correo: user.email },
         { secret: envs.jwt_constants, expiresIn: '15m' },
       );
 
       const resetUrl = `${envs.host}:${envs.port_gateway}/auth/usuarios/olvidar-contrasena/${token}`;
 
       const msg = {
-        to: user.correo,
+        to: user.email,
         from: envs.sendrig_email,
         subject: 'Restablece tu contraseña',
         html: `
-          <p>Hola ${user.nombre},</p>
+          <p>Hola ${user.email},</p>
           <p>Parece que olvidaste tu contraseña. Haz clic en el enlace para restablecerla:</p>
           <a href="${resetUrl}">${resetUrl}</a>
           <p>Este enlace expirará en 15 minutos.</p>
@@ -284,4 +281,3 @@ export class AuthService extends PrismaClient {
     }
   }
 }
-

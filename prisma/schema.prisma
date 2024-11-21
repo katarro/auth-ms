@@ -13,57 +13,57 @@ generator client {
   provider = "prisma-client-js"
 }
 
-enum Rol {
-  CLIENTE
-  EJECUTIVO
-  ADMIN
+enum Role {
+  Client
+  Executive
+  Admin
 }
 
-enum Estado {
-  PENDIENTE
-  ATENDIDO
-  CANCELADO
+enum Status {
+  Pending
+  Attend
+  Canceled
 }
 
-model usuario {
-  id         Int               @id @default(autoincrement()) @unique
-  nombre     String
-  correo     String            @unique
-  contrasena String
-  rol        Rol
-  registro   registro_numero[]
-  Fila       fila[]
+model user {
+  id          Int                @id @default(autoincrement()) @unique
+  name        String
+  email       String             @unique
+  password    String
+  role        Role
+  registrations number_registration[]
+  queues      queue[]
 }
 
-model sucursal {
-  id        Int               @id @default(autoincrement()) @unique
-  nombre    String
-  direccion String            @unique
-  horario   DateTime
-  estado    Boolean
-  fila      fila[]
-  registro  registro_numero[]
+model branch {
+  id          Int                @id @default(autoincrement()) @unique
+  name        String
+  address     String             @unique
+  schedule    DateTime
+  status      Boolean
+  queues      queue[]
+  registrations number_registration[]
 }
 
-model fila {
-  id                   Int      @id @default(autoincrement()) @unique
-  numero_anterior      Int
-  numero_actual        Int
-  numero_siguiente     Int
-  ultima_actualizacion DateTime
-  usuario              usuario  @relation(fields: [usuario_id], references: [id])
-  usuario_id           Int
-  sucursal             sucursal @relation(fields: [sucursal_id], references: [id])
-  sucursal_id          Int
+model queue {
+  id               Int       @id @default(autoincrement()) @unique
+  previous_number  Int
+  current_number   Int
+  next_number      Int
+  last_updated     DateTime
+  user             user      @relation(fields: [user_id], references: [id])
+  user_id          Int
+  branch           branch    @relation(fields: [branch_id], references: [id])
+  branch_id        Int
 }
 
-model registro_numero {
-  id          Int      @id @default(autoincrement()) @unique
-  sucursal    sucursal @relation(fields: [sucursal_id], references: [id])
-  sucursal_id Int
-  usuario     usuario  @relation(fields: [usuario_id], references: [id])
-  usuario_id  Int
-  numero      Int
-  estado      Estado
-  creado_en   DateTime
+model number_registration {
+  id          Int       @id @default(autoincrement()) @unique
+  branch      branch    @relation(fields: [branch_id], references: [id])
+  branch_id   Int
+  user        user      @relation(fields: [user_id], references: [id])
+  user_id     Int
+  number      Int
+  status      Status
+  created_at  DateTime
 }

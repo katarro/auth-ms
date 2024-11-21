@@ -1,5 +1,3 @@
-import { PartialType } from '@nestjs/mapped-types';
-import { RegisterDto } from '../../common/dto/register-auth.dto';
 import {
   IsEmail,
   IsEnum,
@@ -11,34 +9,34 @@ import {
   Length,
 } from 'class-validator';
 
-enum Rol {
+enum Role {
   Admin = 'admin',
   Cliente = 'cliente',
   Ejecutivo = 'ejecutivo',
 }
 
-export class UpdateDto {
+export class UpdateUserDto {
   
   @IsUUID()
   id: string;
 
   @IsString()
   @Length(3, 20)
-  nombre: string;
+  name: string;
 
   @IsEmail()
-  correo: string;
+  email: string;
 
   @IsStrongPassword({
     minSymbols: 0,
     minLength: 8,
   })
-  contrasena: string;
+  password: string;
 
-  @IsEnum(Rol)
-  rol: Rol;
+  @IsEnum(Role)
+  role: Role;
 
   @IsNumber()
   @IsPositive()
-  sucursal_id: number;
+  branch_id: number;
 }
