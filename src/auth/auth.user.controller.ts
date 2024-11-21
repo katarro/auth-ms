@@ -1,15 +1,15 @@
 import { Controller } from '@nestjs/common';
-import { MessagePattern, Payload } from '@nestjs/microservices';
-import { AuthService } from './auth.service';
-import { RegisterUserDto } from 'src/common/dto/register.user.dto';
 import { LoginDto } from 'src/common/dto/login.dto';
-import { CreateBranchDto } from 'src/common/dto/create-branch.dto';
-import { ChangePasswordDto } from 'src/common/dto/change-password.dto';
+import { AuthUserService } from './auth.user.service';
+import { MessagePattern, Payload } from '@nestjs/microservices';
+import { RegisterUserDto } from 'src/common/dto/register.user.dto';
 import { ResetPasswordDto } from 'src/common/dto/reset-password.dto';
+import { ChangePasswordDto } from 'src/common/dto/change-password.dto';
 
-@Controller('auth')
-export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+@Controller('auth/usuarios')
+export class AuthUserController {
+  constructor(
+    private readonly authService: AuthUserService) {}
 
   @MessagePattern('register.user.auth')
   async register(@Payload() registerDto: RegisterUserDto) {
@@ -21,13 +21,6 @@ export class AuthController {
     return this.authService.loginUser(loginDto);
   }
 
-  @MessagePattern('register.sucursal.auth')
-  async registerSucursal(
-    @Payload() payload: { createBranchDto: CreateBranchDto; token: string },
-  ) {
-    const { createBranchDto, token } = payload;
-    return this.authService.registerSucursal(createBranchDto, token);
-  }
 
   @MessagePattern('verify.token')
   async verifyToken(@Payload() token: string) {

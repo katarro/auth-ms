@@ -1,1 +1,13 @@
 1. Corregir codigos de errores
+2. Corregir tabla user
+
+freeq_db=# select * from user;
+  user   
+---------
+ fcastro
+(1 row)
+
+freeq_db=# 
+
+
+3. Get all usuarios
