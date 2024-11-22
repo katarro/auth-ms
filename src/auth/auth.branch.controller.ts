@@ -34,4 +34,9 @@ export class AuthBranchController {
     const { id, updateBranchDto } = payload;
     return this.branchesService.updateBranch(id, updateBranchDto);
   }
+
+  @MessagePattern('get.branch.by.id')
+  async getBranchById(@Payload() payload: { id: number }) {
+    return this.branchesService.getBranchById(payload.id);
+  }
 }

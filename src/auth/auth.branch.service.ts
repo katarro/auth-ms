@@ -158,4 +158,28 @@ export class AuthBranchService extends PrismaClient {
       });
     }
   }
+
+  async getBranchById(id: number) {
+    try {
+      const branch = await this.branch.findUnique({ where: { id } });
+
+      if (!branch) {
+        throw new RpcException({
+          status: HttpStatus.NOT_FOUND,
+          message: 'Sucursal no existe',
+        });
+      }
+
+      return {
+        branch,
+        status: HttpStatus.OK,
+        message: 'Sucursal encontrada',
+      };
+    } catch (error) {
+      throw new RpcException({
+        status: error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        message: error.message || 'Error al obtener sucursal',
+      });
+    }
+  }
 }

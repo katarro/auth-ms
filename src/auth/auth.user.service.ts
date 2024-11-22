@@ -9,10 +9,13 @@ import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { JwtPayload } from './interfaces/jwt-payload.interfaces';
 import { RegisterUserDto } from 'src/common/dto/register.user.dto';
 import { ChangePasswordDto } from 'src/common/dto/change-password.dto';
+import { UpdateRoleDto, UpdateUserDto } from 'src/common/dto';
+import { AuthEventService } from './auth.events.service';
 
 @Injectable()
 export class AuthUserService extends PrismaClient {
   constructor(
+    private readonly eventService: AuthEventService,
     private readonly jwtService: JwtService,
   ) {
     super();
@@ -21,10 +24,9 @@ export class AuthUserService extends PrismaClient {
 
   readonly logger = new Logger('Auth-Services');
 
-  //Cambiar a registerUserDto
-  async registerUser(registerDto: RegisterUserDto) {
+  async registerUser(registerUserDto: RegisterUserDto) {
     try {
-      const { name, email, password, role } = registerDto;
+      const { name, email, password, role } = registerUserDto;
       const user = await this.user.findUnique({ where: { email } });
 
       if (user) {
@@ -42,6 +44,7 @@ export class AuthUserService extends PrismaClient {
           role: role || Role.Client,
         },
       });
+      this.eventService.emitUserCreatedEvent(registerUserDto);
 
       const { password: __, ...rest } = newUser;
 
@@ -111,65 +114,6 @@ export class AuthUserService extends PrismaClient {
       });
     }
   }
-
-  // async registerBranch(createBranchDto: CreateBranchDto, token: string) {
-  //   try {
-  //     await this.verifyAdminToken(token);
-
-  //     const { name, address, schedule, status } = createBranchDto;
-
-  //     const sucursal = await this.branch.findUnique({ where: { address } });
-
-  //     if (sucursal) {
-  //       return {
-  //         status: HttpStatus.CONFLICT,
-  //         message: 'Sucursal ya existe',
-  //       };
-  //     }
-
-  //     const newSucursal = await this.branch.create({
-  //       data: {
-  //         name,
-  //         address,
-  //         schedule,
-  //         status,
-  //       },
-  //     });
-
-  //     return {
-  //       sucursal: newSucursal,
-  //       status: HttpStatus.CREATED,
-  //       message: 'Sucursal registrada',
-  //     };
-  //   } catch (error) {
-  //     console.log('error malo');
-  //     throw new RpcException({
-  //       status: error.status || HttpStatus.NOT_FOUND,
-  //       message: error.message,
-  //     });
-  //   }
-  // }
-
-  // async verifyAdminToken(token: string) {
-  //   try {
-  //     const { role } = await this.jwtService.verify(token, {
-  //       secret: envs.jwt_constants,
-  //     });
-
-  //     if (role !== Role.Admin) {
-  //       throw new RpcException({
-  //         status: 403,
-  //         message: `Acceso denegado, se requiere rol de ${Role.Admin}`,
-  //       });
-  //     }
-  //     return true;
-  //   } catch (error) {
-  //     throw new RpcException({
-  //       status: 401, //HttpStatus.UNAUTHORIZED,
-  //       message: 'Token inválido',
-  //     });
-  //   }
-  // }
 
   async signJwt(payload: JwtPayload) {
     return this.jwtService.signAsync(payload);
@@ -270,6 +214,116 @@ export class AuthUserService extends PrismaClient {
     } catch (error) {
       throw new RpcException({
         status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: error.message,
+      });
+    }
+  }
+
+  async getUsers() {
+    try {
+      const users = await this.user.findMany();
+
+      if (!users.length) {
+        return {
+          message: 'No hay usuarios',
+          status: HttpStatus.NO_CONTENT,
+        };
+      }
+
+      return {
+        users,
+        status: HttpStatus.OK,
+      };
+    } catch (error) {
+      throw new RpcException({
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: error.message,
+      });
+    }
+  }
+
+  async getUserById(id: number) {
+    try {
+      const user = await this.user.findUnique({ where: { id } });
+
+      if (!user) {
+        throw new RpcException({
+          status: HttpStatus.NOT_FOUND,
+          message: 'Usuario no existe',
+        });
+      }
+
+      const { password: _, ...rest } = user;
+
+      return {
+        user: rest,
+        status: HttpStatus.OK,
+      };
+    } catch (error) {
+      throw new RpcException({
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: error.message,
+      });
+    }
+  }
+
+  async updateUser(id: number, updateUserDto: UpdateUserDto) {
+    try {
+      const user = await this.user.findUnique({ where: { id } });
+
+      if (!user) {
+        throw new RpcException({
+          status: HttpStatus.NOT_FOUND,
+          message: 'Usuario no existe',
+        });
+      }
+
+      const updatedUser = await this.user.update({
+        where: { id },
+        data: { ...updateUserDto },
+      });
+
+      const { password: _, ...rest } = updatedUser;
+
+      return {
+        user: rest,
+        message: 'Usuario actualizado exitosamente',
+        status: HttpStatus.OK,
+      };
+    } catch (error) {
+      throw new RpcException({
+        status: error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        message: error.message,
+      });
+    }
+  }
+
+  async updateRole(id: number, updateRoleDto: UpdateRoleDto) {
+    try {
+      const user = await this.user.findUnique({ where: { id } });
+
+      if (!user) {
+        throw new RpcException({
+          status: HttpStatus.NOT_FOUND,
+          message: 'Usuario no existe',
+        });
+      }
+
+      const updatedUser = await this.user.update({
+        where: { id },
+        data: { ...updateRoleDto },
+      });
+
+      const { password: _, ...rest } = updatedUser;
+
+      return {
+        user: rest,
+        message: 'Role actualizado exitosamente',
+        status: HttpStatus.OK,
+      };
+    } catch (error) {
+      throw new RpcException({
+        status: error.status || HttpStatus.INTERNAL_SERVER_ERROR,
         message: error.message,
       });
     }

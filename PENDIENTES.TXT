@@ -8,6 +8,3 @@ freeq_db=# select * from user;
 (1 row)
 
 freeq_db=# 
-
-
-3. Get all usuarios
