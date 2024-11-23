@@ -25,7 +25,7 @@ enum Status {
   Canceled
 }
 
-model user {
+model users {
   id            Int                   @id @unique @default(autoincrement())
   name          String
   email         String                @unique
@@ -52,7 +52,7 @@ model queue {
   current_number  Int
   next_number     Int
   last_updated    DateTime
-  user            user     @relation(fields: [user_id], references: [id])
+  user            users    @relation(fields: [user_id], references: [id])
   user_id         Int
   branch          branch   @relation(fields: [branch_id], references: [id])
   branch_id       Int
@@ -62,7 +62,7 @@ model number_registration {
   id         Int      @id @unique @default(autoincrement())
   branch     branch   @relation(fields: [branch_id], references: [id])
   branch_id  Int
-  user       user     @relation(fields: [user_id], references: [id])
+  user       users    @relation(fields: [user_id], references: [id])
   user_id    Int
   number     Int
   status     Status

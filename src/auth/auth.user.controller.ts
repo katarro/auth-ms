@@ -11,11 +11,13 @@ import { UpdateRoleDto, UpdateUserDto } from 'src/common/dto';
 export class AuthUserController {
   constructor(private readonly authService: AuthUserService) {}
 
+  //sincornizado
   @MessagePattern('register.user.auth')
   async register(@Payload() registerUserDto: RegisterUserDto) {
     return this.authService.registerUser(registerUserDto);
   }
 
+  //no necesita sincornizar
   @MessagePattern('login.user.auth')
   async login(@Payload() loginDto: LoginDto) {
     return this.authService.loginUser(loginDto);
@@ -26,6 +28,7 @@ export class AuthUserController {
     return this.authService.verifyToken(token);
   }
 
+  // sincronizado
   @MessagePattern('change.password')
   async changePassword(
     @Payload() payload: { id: number; changePasswordDto: ChangePasswordDto },
@@ -34,11 +37,6 @@ export class AuthUserController {
       payload.id,
       payload.changePasswordDto,
     );
-  }
-
-  @MessagePattern('reset.password')
-  async forgotPassword(@Payload() payload: ResetPasswordDto) {
-    return this.authService.resetPassword(payload.email);
   }
 
   @MessagePattern('get.users')
@@ -51,6 +49,15 @@ export class AuthUserController {
     return this.authService.getUserById(payload.id);
   }
 
+  
+  @MessagePattern('reset.password')
+  async forgotPassword(@Payload() payload: ResetPasswordDto) {
+    return this.authService.resetPassword(payload.email);
+  }
+  
+  //***************************************** */
+
+  //sincronizar
   @MessagePattern('update.user')
   async updateUser(
     @Payload() payload: { id: number; updateUserDto: UpdateUserDto },
@@ -58,8 +65,11 @@ export class AuthUserController {
     return this.authService.updateUser(payload.id, payload.updateUserDto);
   }
 
+  //sincronizar
   @MessagePattern('update.role')
-  async updateRole(@Payload() payload:{id: number, updateRoleDto: UpdateRoleDto}){
-    return this.authService.updateRole(payload.id, payload.updateRoleDto)
+  async updateRole(
+    @Payload() payload: { id: number; updateRoleDto: UpdateRoleDto },
+  ) {
+    return this.authService.updateRole(payload.id, payload.updateRoleDto);
   }
 }

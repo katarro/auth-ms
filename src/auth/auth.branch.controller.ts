@@ -8,6 +8,7 @@ import { UpdateBranchDto } from 'src/common/dto';
 export class AuthBranchController {
   constructor(private readonly branchesService: AuthBranchService) {}
 
+  //sincronizar
   @MessagePattern('register.branch.auth')
   async registerBranch(
     @Payload() payload: { createBranchDto: CreateBranchDto; token: string },
@@ -21,11 +22,13 @@ export class AuthBranchController {
     return this.branchesService.getBranches();
   }
 
+  //sincronizar
   @MessagePattern('delete.branch')
   async deleteBranch(@Payload() id: number) {
     return this.branchesService.deleteBranch(id);
   }
-
+  
+  //sincronizar
   @MessagePattern('update.branch')
   async updateBranch(
     @Payload() payload: { id: number; updateBranchDto: UpdateBranchDto },

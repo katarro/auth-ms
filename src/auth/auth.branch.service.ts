@@ -5,10 +5,14 @@ import { envs } from 'src/config/envs';
 import { CreateBranchDto } from 'src/common/dto/create-branch.dto';
 import { JwtService } from '@nestjs/jwt';
 import { UpdateBranchDto } from 'src/common/dto';
+import { AuthEventService } from './auth.events.service';
 
 @Injectable()
 export class AuthBranchService extends PrismaClient {
-  constructor(private readonly jwtService: JwtService) {
+  constructor(
+    private readonly authEventsService: AuthEventService,
+    private readonly jwtService: JwtService,
+  ) {
     super();
   }
   readonly logger = new Logger('Auth-Services');
@@ -37,6 +41,8 @@ export class AuthBranchService extends PrismaClient {
           available,
         },
       });
+
+      this.authEventsService.emitBranchCreatedEvent(newSucursal);
 
       return {
         sucursal: newSucursal,

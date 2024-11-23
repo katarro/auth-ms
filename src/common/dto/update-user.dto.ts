@@ -1,6 +1,7 @@
 import {
   IsEmail,
   IsEnum,
+  IsNumber,
   IsOptional,
   IsString,
   IsStrongPassword,
@@ -8,6 +9,10 @@ import {
 } from 'class-validator';
 import { Role } from 'src/auth/enums';
 export class UpdateUserDto {
+  @IsOptional()
+  @IsNumber()
+  id?: number;
+
   @IsString()
   @Length(3, 20)
   @IsOptional()

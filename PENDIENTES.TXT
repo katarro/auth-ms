@@ -8,3 +8,17 @@ freeq_db=# select * from user;
 (1 row)
 
 freeq_db=# 
+
+
+3. El microservicio tiene una base de datos paralela, 
+  el microservicio esta escuchando los eventos de cuando hay un cambio en la base de datos de 
+  auth, entonces, falta hacer la logica de negocio para actualizar ese cambio en bd del microservicio.co
+
+
+4. Crear mensaje predifinidos para cada endpoint y no usar strings, ejemplo:
+return {
+  status: envs.USUARIO_CREADO
+}
+
+5. Tener un broker para eventos de actualzacion de BD. Con nats si evento no realiza el cambio, no reintenta, 
+y necesito que lo haga para mantener una sincronizacion clara de ambas bases de datos.

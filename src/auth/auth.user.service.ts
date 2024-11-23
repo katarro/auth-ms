@@ -2,7 +2,7 @@ import * as bcrypt from 'bcrypt';
 import { envs } from 'src/config/envs';
 import { JwtService } from '@nestjs/jwt';
 import * as sgMail from '@sendgrid/mail';
-import { PrismaClient, Role } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { LoginDto } from 'src/common/dto/login.dto';
 import { RpcException } from '@nestjs/microservices';
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
@@ -11,6 +11,7 @@ import { RegisterUserDto } from 'src/common/dto/register.user.dto';
 import { ChangePasswordDto } from 'src/common/dto/change-password.dto';
 import { UpdateRoleDto, UpdateUserDto } from 'src/common/dto';
 import { AuthEventService } from './auth.events.service';
+import { Role } from './enums';
 
 @Injectable()
 export class AuthUserService extends PrismaClient {
@@ -27,7 +28,7 @@ export class AuthUserService extends PrismaClient {
   async registerUser(registerUserDto: RegisterUserDto) {
     try {
       const { name, email, password, role } = registerUserDto;
-      const user = await this.user.findUnique({ where: { email } });
+      const user = await this.users.findUnique({ where: { email } });
 
       if (user) {
         throw new RpcException({
@@ -36,15 +37,20 @@ export class AuthUserService extends PrismaClient {
         });
       }
 
-      const newUser = await this.user.create({
+      const newUser = await this.users.create({
         data: {
-          name: name,
-          email: email,
+          name,
+          email,
           password: await this.hashearPassword(password),
           role: role || Role.Client,
         },
       });
-      this.eventService.emitUserCreatedEvent(registerUserDto);
+
+      const mappedUserDto: RegisterUserDto = {
+        ...newUser,
+        role: newUser.role as Role, // Casteo explícito
+      };
+      this.eventService.emitUserCreatedEvent(mappedUserDto);
 
       const { password: __, ...rest } = newUser;
 
@@ -65,7 +71,7 @@ export class AuthUserService extends PrismaClient {
   async loginUser(loginDto: LoginDto) {
     const { email, password } = loginDto;
 
-    const user = await this.user.findUnique({
+    const user = await this.users.findUnique({
       where: {
         email,
       },
@@ -126,7 +132,7 @@ export class AuthUserService extends PrismaClient {
 
   async changePassword(id: number, changePasswordDto: ChangePasswordDto) {
     try {
-      const user = await this.user.findUnique({ where: { id } });
+      const user = await this.users.findUnique({ where: { id } });
 
       if (!user) {
         throw new RpcException({
@@ -154,12 +160,18 @@ export class AuthUserService extends PrismaClient {
         });
       }
 
-      const updatedUser = await this.user.update({
+      const hashedPassword = await this.hashearPassword(
+        changePasswordDto.newPassword,
+      );
+
+      const updatedUser = await this.users.update({
         where: { id },
         data: {
-          password: await this.hashearPassword(changePasswordDto.newPassword),
+          password: hashedPassword,
         },
       });
+
+      this.eventService.emitPasswordChangedEvent(id, hashedPassword);
 
       const { password: _, ...rest } = updatedUser;
 
@@ -178,7 +190,7 @@ export class AuthUserService extends PrismaClient {
 
   async resetPassword(email: string) {
     try {
-      const user = await this.user.findUnique({ where: { email } });
+      const user = await this.users.findUnique({ where: { email } });
 
       if (!user) {
         throw new RpcException({
@@ -221,7 +233,7 @@ export class AuthUserService extends PrismaClient {
 
   async getUsers() {
     try {
-      const users = await this.user.findMany();
+      const users = await this.users.findMany();
 
       if (!users.length) {
         return {
@@ -244,7 +256,7 @@ export class AuthUserService extends PrismaClient {
 
   async getUserById(id: number) {
     try {
-      const user = await this.user.findUnique({ where: { id } });
+      const user = await this.users.findUnique({ where: { id } });
 
       if (!user) {
         throw new RpcException({
@@ -269,7 +281,7 @@ export class AuthUserService extends PrismaClient {
 
   async updateUser(id: number, updateUserDto: UpdateUserDto) {
     try {
-      const user = await this.user.findUnique({ where: { id } });
+      const user = await this.users.findUnique({ where: { id } });
 
       if (!user) {
         throw new RpcException({
@@ -278,12 +290,14 @@ export class AuthUserService extends PrismaClient {
         });
       }
 
-      const updatedUser = await this.user.update({
+      const updatedUser = await this.users.update({
         where: { id },
         data: { ...updateUserDto },
       });
 
       const { password: _, ...rest } = updatedUser;
+
+      this.eventService.emitUserUpdatedEvent(id, updateUserDto);
 
       return {
         user: rest,
@@ -300,7 +314,7 @@ export class AuthUserService extends PrismaClient {
 
   async updateRole(id: number, updateRoleDto: UpdateRoleDto) {
     try {
-      const user = await this.user.findUnique({ where: { id } });
+      const user = await this.users.findUnique({ where: { id } });
 
       if (!user) {
         throw new RpcException({
@@ -309,7 +323,7 @@ export class AuthUserService extends PrismaClient {
         });
       }
 
-      const updatedUser = await this.user.update({
+      const updatedUser = await this.users.update({
         where: { id },
         data: { ...updateRoleDto },
       });
