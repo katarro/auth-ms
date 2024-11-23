@@ -49,15 +49,12 @@ export class AuthUserController {
     return this.authService.getUserById(payload.id);
   }
 
-  
   @MessagePattern('reset.password')
   async forgotPassword(@Payload() payload: ResetPasswordDto) {
     return this.authService.resetPassword(payload.email);
   }
-  
-  //***************************************** */
 
-  //sincronizar
+  //sincronizado
   @MessagePattern('update.user')
   async updateUser(
     @Payload() payload: { id: number; updateUserDto: UpdateUserDto },
@@ -65,7 +62,7 @@ export class AuthUserController {
     return this.authService.updateUser(payload.id, payload.updateUserDto);
   }
 
-  //sincronizar
+  //sincronizado
   @MessagePattern('update.role')
   async updateRole(
     @Payload() payload: { id: number; updateRoleDto: UpdateRoleDto },

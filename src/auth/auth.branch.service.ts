@@ -118,10 +118,19 @@ export class AuthBranchService extends PrismaClient {
         });
       }
 
+      if (!branch.available) {
+        return {
+          status: HttpStatus.ACCEPTED,
+          message: 'Sucursal ya ha sido eliminada',
+        };
+      }
+
       const deleteBranch = await this.branch.update({
         where: { id },
         data: { available: false },
       });
+
+      this.authEventsService.emitBranchDeletedEvent(id);
 
       return {
         branch: deleteBranch,
@@ -151,6 +160,8 @@ export class AuthBranchService extends PrismaClient {
         where: { id },
         data: { ...updateBranchDto },
       });
+
+      this.authEventsService.emitBranchUpdatedEvent(id, updateBranchDto);
 
       return {
         branch: updatedBranch,

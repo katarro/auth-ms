@@ -330,6 +330,8 @@ export class AuthUserService extends PrismaClient {
 
       const { password: _, ...rest } = updatedUser;
 
+      this.eventService.emitUpdatedRoleEvent(id, updateRoleDto);
+
       return {
         user: rest,
         message: 'Role actualizado exitosamente',
