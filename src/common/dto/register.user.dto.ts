@@ -10,7 +10,6 @@ import {
 import { Role } from 'src/auth/enums';
 
 export class RegisterUserDto {
-  
   @IsNumber()
   @IsOptional()
   id?: number;
@@ -31,4 +30,8 @@ export class RegisterUserDto {
   @IsEnum(Role)
   @IsOptional()
   role?: Role;
+
+  @IsNumber()
+  @IsOptional()
+  branch_id?: number;
 }

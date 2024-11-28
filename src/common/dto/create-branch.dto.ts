@@ -33,4 +33,9 @@ export class CreateBranchDto {
   @IsBoolean()
   @IsNotEmpty()
   available: boolean;
+
+  @IsNumber()
+  @IsNotEmpty()
+  current_attending_number: number;
+
 }

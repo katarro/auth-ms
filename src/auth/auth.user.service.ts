@@ -27,7 +27,8 @@ export class AuthUserService extends PrismaClient {
 
   async registerUser(registerUserDto: RegisterUserDto) {
     try {
-      const { name, email, password, role } = registerUserDto;
+      const { name, email, password, role, branch_id } = registerUserDto;
+      console.log(registerUserDto);
       const user = await this.users.findUnique({ where: { email } });
 
       if (user) {
@@ -37,12 +38,20 @@ export class AuthUserService extends PrismaClient {
         });
       }
 
+      if (role === Role.Client && branch_id !== null) {
+        throw new RpcException({
+          status: HttpStatus.BAD_REQUEST,
+          message: 'Cliente no puede tener una sucursal asociada',
+        });
+      }
+
       const newUser = await this.users.create({
         data: {
           name,
           email,
           password: await this.hashearPassword(password),
           role: role || Role.Client,
+          branch_id: branch_id || null,
         },
       });
 

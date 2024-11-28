@@ -26,45 +26,22 @@ enum Status {
 }
 
 model users {
-  id            Int                   @id @unique @default(autoincrement())
-  name          String
-  email         String                @unique
-  password      String
-  role          Role
-  registrations number_registration[]
-  queues        queue[]
+  id        Int     @id @unique @default(autoincrement())
+  name      String
+  email     String  @unique
+  password  String
+  role      Role
+  branch_id Int?
+  branch    branch? @relation(fields: [branch_id], references: [id])
 }
 
 model branch {
-  id            Int                   @id @unique @default(autoincrement())
-  name          String
-  address       String                @unique
-  schedule      DateTime
-  status        Boolean
-  available     Boolean
-  queues        queue[]
-  registrations number_registration[]
-}
-
-model queue {
-  id              Int      @id @unique @default(autoincrement())
-  previous_number Int
-  current_number  Int
-  next_number     Int
-  last_updated    DateTime
-  user            users    @relation(fields: [user_id], references: [id])
-  user_id         Int
-  branch          branch   @relation(fields: [branch_id], references: [id])
-  branch_id       Int
-}
-
-model number_registration {
-  id         Int      @id @unique @default(autoincrement())
-  branch     branch   @relation(fields: [branch_id], references: [id])
-  branch_id  Int
-  user       users    @relation(fields: [user_id], references: [id])
-  user_id    Int
-  number     Int
-  status     Status
-  created_at DateTime
+  id                       Int      @id @unique @default(autoincrement())
+  name                     String
+  address                  String   @unique
+  schedule                 DateTime
+  status                   Boolean
+  available                Boolean
+  current_attending_number Int
+  users                    users[]
 }

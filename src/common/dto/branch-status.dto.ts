@@ -6,9 +6,8 @@ export enum BranchStatus {
 }
 
 export enum RegistrationStatus {
-  Pending = 'pending',
-  Attended = 'attended',
-  Canceled = 'canceled',
+  Attended = 'Attended',
+  Canceled = 'Canceled',
 }
 
 export class BranchStatusDto {

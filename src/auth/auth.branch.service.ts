@@ -39,6 +39,7 @@ export class AuthBranchService extends PrismaClient {
           schedule,
           status,
           available,
+          current_attending_number:0
         },
       });
 
@@ -50,9 +51,8 @@ export class AuthBranchService extends PrismaClient {
         message: 'Sucursal registrada',
       };
     } catch (error) {
-      console.log('error malo');
       throw new RpcException({
-        status: error.status || HttpStatus.NOT_FOUND,
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
         message: error.message,
       });
     }
@@ -79,33 +79,7 @@ export class AuthBranchService extends PrismaClient {
     }
   }
 
-  async getBranches() {
-    try {
-      const branches = await this.branch.findMany({
-        where: {
-          available: true,
-        },
-      });
 
-      if (branches.length === 0) {
-        throw new RpcException({
-          status: HttpStatus.NOT_FOUND,
-          message: 'No hay sucursales disponibles',
-        });
-      }
-
-      return {
-        branches,
-        status: HttpStatus.OK,
-        message: 'Sucursales encontradas',
-      };
-    } catch (error) {
-      throw new RpcException({
-        status: error.status || HttpStatus.INTERNAL_SERVER_ERROR,
-        message: error.message || 'Error al obtener sucursales',
-      });
-    }
-  }
 
   async deleteBranch(id: number) {
     try {
@@ -176,27 +150,7 @@ export class AuthBranchService extends PrismaClient {
     }
   }
 
-  async getBranchById(id: number) {
-    try {
-      const branch = await this.branch.findUnique({ where: { id } });
 
-      if (!branch) {
-        throw new RpcException({
-          status: HttpStatus.NOT_FOUND,
-          message: 'Sucursal no existe',
-        });
-      }
 
-      return {
-        branch,
-        status: HttpStatus.OK,
-        message: 'Sucursal encontrada',
-      };
-    } catch (error) {
-      throw new RpcException({
-        status: error.status || HttpStatus.INTERNAL_SERVER_ERROR,
-        message: error.message || 'Error al obtener sucursal',
-      });
-    }
-  }
+  
 }

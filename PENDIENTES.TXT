@@ -1,21 +1,21 @@
 1. Corregir codigos de errores
-2. Corregir tabla user
 
-freeq_db=# select * from user;
-  user   
----------
- fcastro
-(1 row)
-
-freeq_db=# 
-
-
-3. El microservicio tiene una base de datos paralela, 
-  el microservicio esta escuchando los eventos de cuando hay un cambio en la base de datos de 
-  auth, entonces, falta hacer la logica de negocio para actualizar ese cambio en bd del microservicio.co
-
-
-4. Crear mensaje predifinidos para cada endpoint y no usar strings, ejemplo:
+2. Crear mensaje predifinidos para cada endpoint y no usar strings, ejemplo:
 return {
   status: envs.USUARIO_CREADO
 }
+
+
+3. Emitir eventos de queue desde el branc-ms hacia auth para tener sincronizacion de la bd
+
+
+4. Al obtener una sucursal por ID, debo retornar la cola y sus usuarios.
+
+5. Todas las autenticaciones pasan por Auth-ms, ya sea Usuario o Sucursal.
+6. Mover las peticiones que no son de autenticacion, como listar, hacia su ms correspondiente.
+Hacerlo al final de todo.
+
+
+  // Consultar estimación de espera, antes de entrar a la cola, agregar a futuro
+
+CAMBIAR NOMBRE DEL MICROSERVICIO

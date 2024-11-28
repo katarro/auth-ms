@@ -1,8 +1,12 @@
-import { IsEnum, IsNumber, IsPositive } from 'class-validator';
-import { Timestamp } from 'rxjs';
+import { Type } from 'class-transformer';
+import { IsDate, IsEnum, IsNumber, IsPositive } from 'class-validator';
 import { RegistrationStatus } from 'src/common/dto/branch-status.dto';
 
 export class CreateNumberRecordDto {
+  @IsNumber()
+  @IsPositive()
+  id: number;
+
   @IsNumber()
   @IsPositive()
   branch_id: number;
@@ -11,12 +15,10 @@ export class CreateNumberRecordDto {
   @IsPositive()
   user_id: number;
 
-  @IsNumber()
-  @IsPositive()
-  number: number;
-
   @IsEnum(RegistrationStatus)
   status: RegistrationStatus; // Aquí se valida directamente
 
-  created_at: Timestamp<number>
+  @IsDate()
+  @Type(() => Date)
+  created_at: Date;
 }
