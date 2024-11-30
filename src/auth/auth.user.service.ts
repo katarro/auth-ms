@@ -28,7 +28,6 @@ export class AuthUserService extends PrismaClient {
   async registerUser(registerUserDto: RegisterUserDto) {
     try {
       const { name, email, password, role, branch_id } = registerUserDto;
-      console.log(registerUserDto);
       const user = await this.users.findUnique({ where: { email } });
 
       if (user) {
