@@ -25,6 +25,11 @@ export class AuthUserService extends PrismaClient {
 
   readonly logger = new Logger('Auth-Services');
 
+
+  async signJwt(payload: JwtPayload) {
+    return this.jwtService.signAsync(payload);
+  }
+
   async registerUser(registerUserDto: RegisterUserDto) {
     try {
       const { name, email, password, role, branch_id } = registerUserDto;
@@ -129,9 +134,7 @@ export class AuthUserService extends PrismaClient {
     }
   }
 
-  async signJwt(payload: JwtPayload) {
-    return this.jwtService.signAsync(payload);
-  }
+
 
   async hashearPassword(contrasena: string) {
     const salt = await bcrypt.genSalt(10);

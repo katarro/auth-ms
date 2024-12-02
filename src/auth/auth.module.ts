@@ -7,10 +7,11 @@ import { AuthBranchService } from './auth.branch.service';
 import { AuthUserController } from './auth.user.controller';
 import { AuthBranchController } from './auth.branch.controller';
 import { TransportModule } from 'src/transport/transport.module';
+import { AuthGoogle } from './auth.google.service';
 
 @Module({
   controllers: [AuthUserController, AuthBranchController],
-  providers: [AuthUserService, AuthBranchService, AuthEventService],
+  providers: [AuthUserService, AuthBranchService, AuthEventService, AuthGoogle],
   imports: [
     TransportModule,
     JwtModule.register({

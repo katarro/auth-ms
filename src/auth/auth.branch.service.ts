@@ -17,6 +17,8 @@ export class AuthBranchService extends PrismaClient {
   }
   readonly logger = new Logger('Auth-Services');
 
+
+
   async registerBranch(createBranchDto: CreateBranchDto, token: string) {
     try {
       await this.verifyAdminToken(token);
@@ -78,8 +80,6 @@ export class AuthBranchService extends PrismaClient {
       });
     }
   }
-
-
 
   async deleteBranch(id: number) {
     try {

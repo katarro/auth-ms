@@ -25,7 +25,8 @@ export class RegisterUserDto {
     minSymbols: 0,
     minLength: 8,
   })
-  password: string;
+  @IsOptional()
+  password?: string;
 
   @IsEnum(Role)
   @IsOptional()
@@ -34,4 +35,8 @@ export class RegisterUserDto {
   @IsNumber()
   @IsOptional()
   branch_id?: number;
+
+  @IsString()
+  @IsOptional()
+  picture?: string;
 }

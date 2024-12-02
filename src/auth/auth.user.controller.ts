@@ -6,10 +6,20 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 import { RegisterUserDto } from 'src/common/dto/register.user.dto';
 import { ResetPasswordDto } from 'src/common/dto/reset-password.dto';
 import { ChangePasswordDto } from 'src/common/dto/change-password.dto';
+import { AuthGoogle } from './auth.google.service';
 
 @Controller('auth/usuarios')
 export class AuthUserController {
-  constructor(private readonly authService: AuthUserService) {}
+  constructor(
+    private readonly authService: AuthUserService,
+    private readonly googleAuth: AuthGoogle,
+  ) {}
+
+  @MessagePattern('auth.google')
+  async authGoogle(@Payload() payload: any) {
+    console.log('USER: ', payload);
+    return this.googleAuth.authGoogle(payload);
+  }
 
   @MessagePattern('register.user.auth')
   async register(@Payload() registerUserDto: RegisterUserDto) {
@@ -64,6 +74,4 @@ export class AuthUserController {
   async forgotPassword(@Payload() payload: ResetPasswordDto) {
     return this.authService.resetPassword(payload.email);
   }
-
-
 }
