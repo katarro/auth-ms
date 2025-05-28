@@ -1,8 +1,8 @@
-import { $Enums } from "@prisma/client";
+import { $Enums } from '@prisma/client';
 
 export interface JwtPayload {
-  id: number;
+  id: string;
   name: string;
   email: string;
-  role: $Enums.Role
+  role: $Enums.RoleType;
 }

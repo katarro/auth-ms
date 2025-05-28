@@ -1,6 +1,9 @@
 {
   "name": "auth-ms",
   "version": "0.0.1",
+  "prisma": {
+    "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
+  },
   "description": "",
   "author": "",
   "private": true,
@@ -28,7 +31,9 @@
     "@nestjs/platform-express": "^10.0.0",
     "@prisma/client": "^5.22.0",
     "@sendgrid/mail": "^8.1.4",
+    "@types/bcryptjs": "^3.0.0",
     "bcrypt": "^5.1.1",
+    "bcryptjs": "^3.0.2",
     "class-transform": "^0.7.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
@@ -36,6 +41,7 @@
     "joi": "^17.13.3",
     "nats": "^2.28.2",
     "reflect-metadata": "^0.2.0",
+    "resend": "^4.5.1",
     "rxjs": "^7.8.1"
   },
   "devDependencies": {

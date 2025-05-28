@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "ticket_history" ALTER COLUMN "wait_time" DROP NOT NULL,
+ALTER COLUMN "wait_time" SET DATA TYPE DOUBLE PRECISION;

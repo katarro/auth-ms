@@ -13,36 +13,579 @@ generator client {
   provider = "prisma-client-js"
 }
 
-enum Role {
-  Client
-  Executive
-  Admin
+// Enumeraciones
+enum RoleType {
+  ADMIN
+  ADMIN_BUSINESS
+  ADMIN_BRANCH
+  EXECUTIVE
+  CLIENT
 }
 
-enum Status {
-  Pending
-  Attend
-  Canceled
+enum TicketStatus {
+  WAITING
+  CALLED
+  ATTENDING
+  COMPLETED
+  ABSENT
+  POSTPONED
 }
 
-model users {
-  id        Int     @id @unique @default(autoincrement())
-  name      String
-  email     String  @unique
-  password  String?
-  picture   String?
-  role      Role
-  branch_id Int?
-  branch    branch? @relation(fields: [branch_id], references: [id])
+enum EntryType {
+  VIRTUAL
+  PHYSICAL
+  MIXED
 }
 
-model branch {
-  id                       Int      @id @unique @default(autoincrement())
-  name                     String
-  address                  String   @unique
-  schedule                 DateTime
-  status                   Boolean
-  available                Boolean
-  current_attending_number Int
-  users                    users[]
+enum SyncStatus {
+  SYNCED
+  PENDING
+  FAILED
+}
+
+enum AbsencePolicy {
+  END_QUEUE
+  POSTPONE
+  DISCARD
+}
+
+enum ModelType {
+  M_M_1
+  M_M_C
+  ML_REGRESSION
+  ML_DECISION_TREE
+}
+
+enum ReorderingEventType {
+  ABSENCE
+  OPERATOR_OFFLINE
+  PRIORITY_CHANGE
+}
+
+enum NotificationType {
+  PROXIMITY
+  CALLED
+  CANCELLED
+  DELAYED
+}
+
+enum CustomerTypeName {
+  REGULAR
+  SENIOR
+  REDUCED_CAPACITY
+  PREGNANT
+  PREFERENTIAL
+}
+
+// Modelos básicos
+model User {
+  id             String   @id @default(uuid())
+  name           String?
+  email          String   @unique
+  rut            String?  @unique
+  companyId      String?  @map("company_id")
+  branchId       String?  @map("branch_id")
+  password       String
+  phone          String?
+  picture        String?
+  roleId         String   @map("role_id")
+  customerTypeId String?  @map("customer_type_id")
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relaciones
+  role                  Role               @relation(fields: [roleId], references: [id])
+  customerType          CustomerType?      @relation(fields: [customerTypeId], references: [id])
+  company               Company?           @relation("CompanyUsers", fields: [companyId], references: [id])
+  branch                Branch?            @relation("BranchExecutives", fields: [branchId], references: [id])
+  managedCompanies      Company[]
+  managedBranches       Branch[]
+  currentServiceModules ServiceModule[]
+  moduleAssignments     ModuleAssignment[]
+  notifications         Notification[]
+  fraudDetections       FraudDetection[]
+  systemLogs            SystemLog[]
+  tickets               QueueTicket[]
+  attendedTickets       QueueTicket[]      @relation("TicketExecutive") // ← como ejecutivo
+  TicketHistory         TicketHistory[]
+
+  // Relaciones para QueueTicketAbsent
+  absentTickets         QueueTicketAbsent[] // Como cliente ausente
+  attendedAbsentTickets QueueTicketAbsent[] @relation("AbsentTicketExecutive") // Como ejecutivo que atiende ausentes
+
+  @@index([email])
+  @@index([roleId])
+  @@map("users")
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  name        RoleType @unique
+  description String
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relaciones
+  users User[]
+
+  @@map("roles")
+}
+
+model Company {
+  id          String   @id @default(uuid())
+  name        String
+  rut         String   @unique
+  address     String
+  phone       String?
+  email       String   @unique
+  website     String?
+  logo        String?
+  description String?
+  adminId     String   @map("admin_id")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relaciones
+  admin    User     @relation(fields: [adminId], references: [id])
+  branches Branch[]
+  users    User[]   @relation("CompanyUsers")
+
+  @@index([adminId])
+  @@map("companies")
+}
+
+model Branch {
+  id          String   @id @default(uuid())
+  companyId   String   @map("company_id")
+  name        String
+  address     String
+  adminId     String   @map("admin_id")
+  isActive    Boolean  @default(true) @map("is_active")
+  offlineMode Boolean  @default(false) @map("offline_mode")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relaciones
+  company           Company            @relation(fields: [companyId], references: [id])
+  admin             User               @relation(fields: [adminId], references: [id])
+  serviceTypes      ServiceType[]
+  serviceModules    ServiceModule[]
+  offlineSyncQueues OfflineSyncQueue[]
+  users             User[]             @relation("BranchExecutives")
+  queues            Queue[] // 👈 relación inversa con Queue
+
+  @@unique([companyId, name])
+  @@index([companyId])
+  @@index([adminId])
+  @@map("branches")
+}
+
+// Nuevo modelo de servicios y módulos
+model ServiceType {
+  id          String   @id @default(uuid())
+  branchId    String   @map("branch_id")
+  name        String
+  description String
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  code        String   @unique
+
+  // Relaciones
+  branch         Branch          @relation(fields: [branchId], references: [id])
+  serviceModules ServiceModule[]
+  queues         Queue[]
+
+  @@unique([branchId, name])
+  @@index([branchId])
+  @@map("service_types")
+}
+
+model ServiceModule {
+  id                 String   @id @default(uuid())
+  branchId           String   @map("branch_id")
+  serviceTypeId      String   @map("service_type_id")
+  name               String
+  queueId            String?  @map("queue_id")
+  currentExecutiveId String?  @map("current_executive_id")
+  isActive           Boolean  @default(true) @map("is_active")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  // Relaciones
+  branch           Branch      @relation(fields: [branchId], references: [id])
+  serviceType      ServiceType @relation(fields: [serviceTypeId], references: [id])
+  currentExecutive User?       @relation(fields: [currentExecutiveId], references: [id])
+  queue            Queue?      @relation("ModuleQueue")
+
+  moduleAssignments ModuleAssignment[]
+  tickets           QueueTicket[]
+  TicketHistory     TicketHistory[]
+  QueueTicketAbsent QueueTicketAbsent[]
+
+  @@unique([branchId, name])
+  @@index([branchId])
+  @@index([serviceTypeId])
+  @@index([currentExecutiveId])
+  @@map("service_modules")
+}
+
+// Sistema de colas
+model Queue {
+  id              String   @id @default(uuid())
+  name            String
+  branchId        String   @map("branch_id") // 👈 NUEVO
+  serviceModuleId String   @unique @map("service_module_id")
+  serviceTypeId   String   @map("service_type_id")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relaciones
+  branch            Branch              @relation(fields: [branchId], references: [id]) // 👈 NUEVO
+  serviceModule     ServiceModule       @relation("ModuleQueue", fields: [serviceModuleId], references: [id])
+  serviceType       ServiceType         @relation(fields: [serviceTypeId], references: [id])
+  tickets           QueueTicket[]
+  settings          QueueSettings?
+  metrics           QueueMetrics[]
+  predictionModels  PredictionModel[]
+  reorderingEvents  ReorderingEvent[]
+  fraudDetections   FraudDetection[]
+  TicketHistory     TicketHistory[]
+  QueueTicketAbsent QueueTicketAbsent[]
+
+  @@unique([branchId, name]) // 👈 nombre único por sucursal
+  @@index([serviceTypeId])
+  @@map("queues")
+}
+
+model ModuleAssignment {
+  id          String    @id @default(uuid())
+  moduleId    String    @map("module_id")
+  executiveId String    @map("executive_id")
+  startTime   DateTime  @map("start_time")
+  endTime     DateTime? @map("end_time")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  // Relaciones
+  module    ServiceModule @relation(fields: [moduleId], references: [id])
+  executive User          @relation(fields: [executiveId], references: [id])
+
+  @@index([moduleId])
+  @@index([executiveId])
+  @@index([moduleId, executiveId, startTime])
+  @@map("module_assignments")
+}
+
+model QueueTicket {
+  id                String       @id @default(uuid())
+  queueId           String       @map("queue_id")
+  userId            String?      @map("user_id")
+  serviceModuleId   String?      @map("service_module_id")
+  executiveId       String?      @map("executive_id") // 👈 Nuevo campo
+  anonymousEmail    String?      @map("anonymous_email")
+  anonymousPhone    String?      @map("anonymous_phone")
+  registrationToken String?      @map("registration_token")
+  ticketNumber      Int          @map("ticket_number")
+  estimatedWaitTime Int          @map("estimated_wait_time")
+  priorityLevel     Int          @default(0) @map("priority_level")
+  status            TicketStatus @default(WAITING)
+  entryTime         DateTime     @map("entry_time")
+  callTime          DateTime?    @map("call_time")
+  serviceTime       DateTime?    @map("service_time")
+  endTime           DateTime?    @map("end_time")
+  entryType         EntryType    @default(VIRTUAL)
+  createdOffline    Boolean      @default(false) @map("created_offline")
+  syncStatus        SyncStatus   @default(SYNCED) @map("sync_status")
+  absenceCount      Int          @default(0) @map("absence_count")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+  moduleCode        String       @map("module_code") // 👈 Nuevo campo
+
+  // Relaciones
+  queue              Queue                     @relation(fields: [queueId], references: [id])
+  user               User?                     @relation(fields: [userId], references: [id])
+  serviceModule      ServiceModule?            @relation(fields: [serviceModuleId], references: [id])
+  executive          User?                     @relation("TicketExecutive", fields: [executiveId], references: [id]) // 👈 Relación nueva
+  satisfactionSurvey SatisfactionSurvey?
+  notifications      Notification[]
+  tokenValidation    AnonymousTokenValidation?
+
+  @@index([queueId])
+  @@index([userId])
+  @@index([serviceModuleId])
+  @@index([registrationToken])
+  @@index([status])
+  @@index([entryTime])
+  @@index([executiveId]) // 👈 index para buscar por ejecutivo
+  @@map("queue_tickets")
+}
+
+model QueueSettings {
+  id                    String        @id @default(uuid())
+  queueId               String        @unique @map("queue_id")
+  maxAbsenceTime        Int           @map("max_absence_time")
+  absencePolicy         AbsencePolicy @default(END_QUEUE) @map("absence_policy")
+  postponePositions     Int           @default(3) @map("postpone_positions")
+  notificationTime      Int           @map("notification_time")
+  maxDailyEntries       Int           @default(3) @map("max_daily_entries")
+  allowAnonymousTickets Boolean       @default(true) @map("allow_anonymous_tickets")
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+
+  // Relaciones
+  queue Queue @relation(fields: [queueId], references: [id])
+
+  @@map("queue_settings")
+}
+
+// Métricas y analítica
+model QueueMetrics {
+  id                 String   @id @default(uuid())
+  queueId            String   @map("queue_id")
+  date               DateTime @db.Date
+  hour               Int
+  arrivalRate        Float    @map("arrival_rate")
+  serviceRate        Float    @map("service_rate")
+  serversCount       Int      @map("servers_count")
+  averageWaitTime    Float    @map("average_wait_time")
+  averageQueueLength Float    @map("average_queue_length")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  // Relaciones
+  queue Queue @relation(fields: [queueId], references: [id])
+
+  @@index([queueId])
+  @@index([date, hour])
+  @@map("queue_metrics")
+}
+
+model PredictionModel {
+  id         String    @id @default(uuid())
+  queueId    String    @map("queue_id")
+  modelType  ModelType @map("model_type")
+  parameters Json
+  accuracy   Float
+  isActive   Boolean   @default(true) @map("is_active")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  // Relaciones
+  queue Queue @relation(fields: [queueId], references: [id])
+
+  @@index([queueId])
+  @@map("prediction_models")
+}
+
+model ReorderingEvent {
+  id                   String              @id @default(uuid())
+  queueId              String              @map("queue_id")
+  eventType            ReorderingEventType @map("event_type")
+  affectedTicketsCount Int                 @map("affected_tickets_count")
+  description          String              @db.Text
+  createdAt            DateTime            @default(now()) @map("created_at")
+
+  // Relaciones
+  queue Queue @relation(fields: [queueId], references: [id])
+
+  @@index([queueId])
+  @@index([createdAt])
+  @@map("reordering_events")
+}
+
+// Clientes y satisfacción
+model CustomerType {
+  id            String   @id @default(uuid())
+  name          String
+  priorityLevel Int      @map("priority_level")
+  description   String
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  // Relaciones
+  users User[]
+
+  @@map("customer_types")
+}
+
+model SatisfactionSurvey {
+  id        String   @id @default(uuid())
+  ticketId  String   @unique @map("ticket_id")
+  rating    Int
+  comments  String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relaciones
+  ticket QueueTicket @relation(fields: [ticketId], references: [id])
+
+  @@map("satisfaction_surveys")
+}
+
+// Notificaciones y seguridad
+model Notification {
+  id             String           @id @default(uuid())
+  userId         String?          @map("user_id")
+  ticketId       String           @map("ticket_id")
+  anonymousEmail String?          @map("anonymous_email")
+  anonymousPhone String?          @map("anonymous_phone")
+  type           NotificationType
+  message        String
+  isRead         Boolean          @default(false) @map("is_read")
+  createdAt      DateTime         @default(now()) @map("created_at")
+
+  // Relaciones
+  user   User?       @relation(fields: [userId], references: [id])
+  ticket QueueTicket @relation(fields: [ticketId], references: [id])
+
+  @@index([userId])
+  @@index([ticketId])
+  @@index([isRead])
+  @@map("notifications")
+}
+
+model FraudDetection {
+  id              String    @id @default(uuid())
+  userId          String?   @map("user_id")
+  queueId         String    @map("queue_id")
+  ipAddress       String?   @map("ip_address")
+  dailyEntryCount Int       @default(0) @map("daily_entry_count")
+  lastEntryTime   DateTime? @map("last_entry_time")
+  isRestricted    Boolean   @default(false) @map("is_restricted")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relaciones
+  user  User? @relation(fields: [userId], references: [id])
+  queue Queue @relation(fields: [queueId], references: [id])
+
+  @@index([userId])
+  @@index([queueId])
+  @@index([ipAddress])
+  @@map("fraud_detection")
+}
+
+// Operación offline y registros
+model OfflineSyncQueue {
+  id         String     @id @default(uuid())
+  branchId   String     @map("branch_id")
+  entityType String     @map("entity_type")
+  entityData Json       @map("entity_data")
+  syncStatus SyncStatus @default(PENDING) @map("sync_status")
+  retryCount Int        @default(0) @map("retry_count")
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
+
+  // Relaciones
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@index([branchId])
+  @@index([syncStatus])
+  @@map("offline_sync_queue")
+}
+
+model SystemLog {
+  id         String   @id @default(uuid())
+  userId     String?  @map("user_id")
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  action     String
+  details    Json
+  ipAddress  String?  @map("ip_address")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  // Relaciones
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("system_logs")
+}
+
+model AnonymousTokenValidation {
+  id                 String   @id @default(uuid())
+  registrationToken  String   @unique @map("registration_token")
+  ticketId           String   @unique @map("ticket_id")
+  validationAttempts Int      @default(0) @map("validation_attempts")
+  expiresAt          DateTime @map("expires_at")
+  isUsed             Boolean  @default(false) @map("is_used")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  // Relaciones
+  ticket QueueTicket @relation(fields: [ticketId], references: [id])
+
+  @@index([registrationToken])
+  @@index([ticketId])
+  @@index([expiresAt])
+  @@map("anonymous_token_validations")
+}
+
+model TicketHistory {
+  id              String       @id @default(uuid())
+  originalId      String       @map("original_id") // ID original del ticket
+  userId          String?      @map("user_id")
+  serviceModuleId String?      @map("service_module_id")
+  queueId         String       @map("queue_id")
+  ticketNumber    Int          @map("ticket_number")
+  status          TicketStatus
+  entryType       EntryType
+  entryTime       DateTime     @map("entry_time")
+  callTime        DateTime?    @map("call_time")
+  serviceTime     Float?       @map("service_time_minutes")
+  endTime         DateTime?    @map("end_time")
+  priorityLevel   Int          @map("priority_level")
+  waitTime        Float?       @map("wait_time_minutes")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relaciones (opcionales)
+  user   User?          @relation(fields: [userId], references: [id])
+  queue  Queue          @relation(fields: [queueId], references: [id])
+  module ServiceModule? @relation(fields: [serviceModuleId], references: [id])
+
+  @@index([originalId])
+  @@map("ticket_history")
+}
+
+model QueueTicketAbsent {
+  id              String       @id @default(uuid())
+  queueId         String       @map("queue_id")
+  userId          String?      @map("user_id")
+  serviceModuleId String?      @map("service_module_id")
+  executiveId     String?      @map("executive_id")
+  status          TicketStatus @default(WAITING)
+
+  // Datos del ticket con numeración conservada
+  ticketNumber Int    @map("ticket_number") // Número original (002, 007, 015)
+  moduleCode   String @default("R") @map("module_code") // Siempre "R" para ausentes
+
+  // Campos adicionales
+  anonymousEmail    String?   @map("anonymous_email")
+  anonymousPhone    String?   @map("anonymous_phone")
+  registrationToken String?   @map("registration_token")
+  estimatedWaitTime Int       @map("estimated_wait_time")
+  priorityLevel     Int       @default(0) @map("priority_level")
+  entryType         EntryType @default(VIRTUAL)
+
+  // Control de ausencias
+  absenceTime  DateTime @map("absence_time") // Cuando el cliente fue marcado como ausente
+  absenceCount Int      @default(1) @map("attempts_count") // Cuantas veces se ha intentado contactar al cliente
+
+  // Timestamps originales preservados
+  originalEntryTime DateTime @map("original_entry_time")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  // Relaciones
+  queue         Queue          @relation(fields: [queueId], references: [id])
+  user          User?          @relation(fields: [userId], references: [id])
+  serviceModule ServiceModule? @relation(fields: [serviceModuleId], references: [id])
+  executive     User?          @relation("AbsentTicketExecutive", fields: [executiveId], references: [id])
+
+  @@index([queueId])
+  @@index([ticketNumber])
+  @@map("queue_tickets_absent")
 }
