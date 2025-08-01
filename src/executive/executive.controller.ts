@@ -18,13 +18,13 @@ export class ExecutiveController {
     return await this.executiveService.callNextTicket(userId);
   }
 
-  @MessagePattern('executive.completeTicket')
-  async completeTicket(
-    @Payload() payload: { ticketId: string; userId: string },
-  ) {
-    const { ticketId, userId } = payload;
-    return await this.executiveService.completeTicket(ticketId, userId);
-  }
+  // @MessagePattern('executive.completeTicket')
+  // async completeTicket(
+  //   @Payload() payload: { ticketId: string; userId: string },
+  // ) {
+  //   const { ticketId, userId } = payload;
+  //   return await this.executiveService.completeTicket(ticketId, userId);
+  // }
 
   @MessagePattern('executive.markTicketAsAbsent')
   async markTicketAsAbsent(

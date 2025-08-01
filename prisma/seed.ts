@@ -170,7 +170,7 @@ async function main() {
   // Asignar colas a módulos de servicio
   await asignQueueToModule(prisma, queue, module);
 
-  // 11. Crear tickets de servicio
+  // 11. Crear tickets de servicio, asignar 5 en cada cola
   await createServiceTicket(
     prisma,
     clientes,

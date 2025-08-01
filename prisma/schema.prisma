@@ -29,6 +29,7 @@ enum TicketStatus {
   COMPLETED
   ABSENT
   POSTPONED
+  CANCELLED
 }
 
 enum EntryType {
@@ -94,7 +95,7 @@ model User {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  // Relaciones
+  // Relaciones básicas
   role                  Role               @relation(fields: [roleId], references: [id])
   customerType          CustomerType?      @relation(fields: [customerTypeId], references: [id])
   company               Company?           @relation("CompanyUsers", fields: [companyId], references: [id])
@@ -106,13 +107,18 @@ model User {
   notifications         Notification[]
   fraudDetections       FraudDetection[]
   systemLogs            SystemLog[]
-  tickets               QueueTicket[]
-  attendedTickets       QueueTicket[]      @relation("TicketExecutive") // ← como ejecutivo
-  TicketHistory         TicketHistory[]
 
-  // Relaciones para QueueTicketAbsent
+  // Relaciones de tickets activos
+  tickets         QueueTicket[] // Como cliente
+  attendedTickets QueueTicket[] @relation("TicketExecutive") // Como ejecutivo
+
+  // Relaciones de tickets ausentes
   absentTickets         QueueTicketAbsent[] // Como cliente ausente
   attendedAbsentTickets QueueTicketAbsent[] @relation("AbsentTicketExecutive") // Como ejecutivo que atiende ausentes
+
+  // ✅ RELACIONES DE HISTORIAL CORREGIDAS:
+  createdHistoryTickets  TicketHistory[] // Como cliente (userId en TicketHistory)
+  attendedHistoryTickets TicketHistory[] @relation("HistoryExecutive") // Como ejecutivo (executiveId en TicketHistory)
 
   @@index([email])
   @@index([roleId])
@@ -161,6 +167,7 @@ model Branch {
   companyId   String   @map("company_id")
   name        String
   address     String
+  phone       String?
   adminId     String   @map("admin_id")
   isActive    Boolean  @default(true) @map("is_active")
   offlineMode Boolean  @default(false) @map("offline_mode")
@@ -527,6 +534,7 @@ model TicketHistory {
   originalId      String       @map("original_id") // ID original del ticket
   userId          String?      @map("user_id")
   serviceModuleId String?      @map("service_module_id")
+  executiveId     String?      @map("executive_id")
   queueId         String       @map("queue_id")
   ticketNumber    Int          @map("ticket_number")
   status          TicketStatus
@@ -542,11 +550,13 @@ model TicketHistory {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relaciones (opcionales)
-  user   User?          @relation(fields: [userId], references: [id])
-  queue  Queue          @relation(fields: [queueId], references: [id])
-  module ServiceModule? @relation(fields: [serviceModuleId], references: [id])
+  user      User?          @relation(fields: [userId], references: [id])
+  queue     Queue          @relation(fields: [queueId], references: [id])
+  module    ServiceModule? @relation(fields: [serviceModuleId], references: [id])
+  executive User?          @relation("HistoryExecutive", fields: [executiveId], references: [id])
 
   @@index([originalId])
+  @@index([executiveId])
   @@map("ticket_history")
 }
 
